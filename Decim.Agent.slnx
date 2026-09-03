@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Decim.Agent/Decim.Agent.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Decim.Agent.Tests/Decim.Agent.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,70 @@
+name: Release Windows agent
+
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: write
+
+env:
+  CI: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_NOLOGO: "true"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: >-
+          dotnet restore Decim.Agent.slnx
+          --locked-mode
+          --property:Configuration=Release
+          --property:NuGetAudit=true
+          --property:NuGetAuditMode=all
+
+      - name: Build
+        run: dotnet build Decim.Agent.slnx --configuration Release --no-restore
+
+      - name: Check formatting
+        run: dotnet format Decim.Agent.slnx --verify-no-changes --no-restore
+
+      - name: Test
+        run: dotnet test --solution Decim.Agent.slnx --configuration Release --no-build --no-restore --minimum-expected-tests 1
+
+      - name: Publish Windows x64 executable
+        run: >-
+          dotnet publish src/Decim.Agent/Decim.Agent.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --no-restore
+          --property:Version=1.0.${{ github.run_number }}
+          --output artifacts/publish
+
+      - name: Package release
+        run: |
+          zip -j artifacts/decim-agent-win-x64.zip artifacts/publish/*
+          unzip -l artifacts/decim-agent-win-x64.zip
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "v1.0.${{ github.run_number }}"
+          artifacts/decim-agent-win-x64.zip
+          --target "${{ github.sha }}"
+          --title "decim-agent v1.0.${{ github.run_number }}"
+          --generate-notes
+          --latest
